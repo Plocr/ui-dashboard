@@ -1,0 +1,21 @@
+{
+  "name": "ui-dashboard",
+  "version": "0.9.0",
+  "description": "DSH 右侧仪表盘 UI 插件：上下文占用（三色圆环）、Token 用量与人民币费用估算、会话统计、目标、待办、后台任务、工作区。",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "ui",
+    "dashboard"
+  ],
+  "private": true,
+  "main": "src/client.js",
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
