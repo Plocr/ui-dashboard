@@ -27,7 +27,7 @@
 | together | Together AI | https://api.together.ai/v1 | TOGETHER_API_KEY | 无公开 REST 端点（仅 dashboard） | ❌ |
 | groq | Groq | https://api.groq.com/openai/v1 | GROQ_API_KEY | 无公开 billing/usage 端点 | ❌ |
 | cerebras | Cerebras | https://api.cerebras.ai/v1 | CEREBRAS_API_KEY | 无公开 billing/usage 端点 | ❌ |
-| fireworks | Fireworks AI | https://api.fireworks.ai/inference | FIREWORKS_API_KEY | `GET /v1/billing/summary`（见 [Get billing summary](https://docs.fireworks.ai/api-reference/get-billing-summary)） | ✅ 支持 |
+| fireworks | Fireworks AI | https://api.fireworks.ai/inference | FIREWORKS_API_KEY | `GET /v1/accounts/{account_id}/billing/summary`（[Get billing summary](https://docs.fireworks.ai/api-reference/get-billing-summary)，**端点含 account_id**，非仅 key 直查） | ⚠️ 部分（需 account_id） |
 | nvidia | NVIDIA NIM | https://integrate.api.nvidia.com/v1 | NVIDIA_API_KEY | 无公开 credits/balance 端点（[官方论坛确认无法查 credits](https://forums.developer.nvidia.com/t/cannot-find-the-amount-of-credits-left-on-nim-api/337051)） | ❌ |
 | huggingface | Hugging Face | https://router.huggingface.co/v1 | HF_TOKEN | `GET https://huggingface.co/api/whoami-v2` 仅返回身份，无 credits 余额 | ⚠️ 部分（无余额） |
 | github-copilot | GitHub Copilot | https://api.individual.githubcopilot.com | COPILOT_GITHUB_TOKEN | 用量端点仅企业/组织管理员：`GET /orgs/{org}/copilot/usage`、`/enterprises/{e}/copilot/usage`；个人订阅无余额 API | ⚠️ 部分（个人 ❌） |

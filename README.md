@@ -43,7 +43,8 @@ DeepSeek Harness（DSH）仪表盘 UI 插件。
 **有端点但需实测/自行配置**（未内置）：
 
 - `kimi-coding`：标准余额端点与 `moonshotai-cn` 相同（`api.moonshot.cn/v1/users/me/balance`，用 `KIMI_API_KEY`）；Coding 套餐剩余量无公开 API；
-- `xiaomi`：社区端点 `GET https://api.mimogateway.com/v1/users/me/balance`（官方未显式文档化，需实测后按 `balance.providers` 配置）。
+- `xiaomi`：社区端点 `GET https://api.mimogateway.com/v1/users/me/balance`（官方未显式文档化，需实测后按 `balance.providers` 配置）；
+- `fireworks`：官方 `GET /v1/accounts/{account_id}/billing/summary`（[文档](https://docs.fireworks.ai/api-reference/get-billing-summary)）**端点含 account_id**，需先拿到账户 id 再配置。
 
 **未内置/不支持的 provider**（完整调研见 `docs/providers.md`）：
 
