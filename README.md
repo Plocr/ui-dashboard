@@ -25,20 +25,40 @@ DeepSeek Harness（DSH）仪表盘 UI 插件。
 ### 余额/用量：跟随 provider，按各服务商官方 API 计算
 
 卡片**跟随当前默认模型的 provider 路由**（`agentDefaultModel.currentSelection()`），
-内置两种来源，各自按官方 API 计算：
+按 provider 分发到对应官方 API。三种形态：
+
+- `money`（金额）：币种总额 + 充值/赠送明细 —— DeepSeek、Moonshot(Kimi)
+- `usage`（用量百分比窗口）：rolling(5h)/weekly/monthly + 重置时间 —— OpenCode Go
+- `credits`（预付费余额）：总量 / 已用 / 剩余 —— OpenRouter
+
+**内置映射**（用该 provider 自己的 API key 即可直查）：
 
 | provider 路由 | 形态 | 数据来源 |
 | --- | --- | --- |
-| `deepseek-official` | 金额：按币种总额 + 充值/赠送明细 | `GET https://api.deepseek.com/user/balance`（Bearer `DEEPSEEK_API_KEY`，[官方文档](https://api-docs.deepseek.com/zh-cn/api/get-user-balance/)） |
-| `opencode-go` | 用量：rolling（5 小时滚动）/ weekly / monthly 三个窗口的已用百分比 + 重置时间（进度条展示） | `GET https://opencode.ai/zen/go/v1/usage`（Bearer `OPENCODE_GO_API_KEY`） |
+| `deepseek-official` | money | `GET https://api.deepseek.com/user/balance`（[官方文档](https://api-docs.deepseek.com/zh-cn/api/get-user-balance/)） |
+| `opencode-go` | usage | `GET https://opencode.ai/zen/go/v1/usage` |
+| `openrouter` | credits | `GET https://openrouter.ai/api/v1/credits`（[文档](https://openrouter.ai/docs/api/api-reference/credits/get-remaining-credits)） |
+| `moonshotai-cn` | money | `GET https://api.moonshot.cn/v1/users/me/balance`（[Kimi 余额文档](https://www.kimi.com/zh-cn/help/kimi-api/api-balance-and-usage)） |
+| `kimi-coding` | money | 同上（标准 API 余额；Coding 套餐剩余无公开 API） |
+| `xiaomi` | money | `GET https://api.mimogateway.com/v1/users/me/balance`（⚠️ 社区端点，需实测） |
 
-- 未在映射中的路由（其他订阅制/第三方网关）→ 卡片明确提示"provider 非 DeepSeek 官方，
-  余额不可用"，不会硬查无关接口；
+**未内置/不支持的 provider**（完整调研见 `docs/providers.md`）：
+
+- **有官方端点但需额外凭据（企业/云计费）**：`openai`（org admin key）、`anthropic`（Admin key）、
+  `github-copilot`（仅企业管理员）、`vercel-ai-gateway`/`cloudflare-ai-gateway`/`cloudflare-workers-ai`（需平台 token，无"余额"概念）、
+  `amazon-bedrock`（AWS Cost Explorer，需 IAM）、`qwen-token-plan`（阿里云 BSS 云账户余额，非套餐）、
+  `mistral`（org 级 `/v1/admin/*`，官方 SDK 未发布）、`xai`（`management-api.x.ai` prepaid/balance，需 Management Key）——
+  可在 `balance.providers` 里自行配置；
+- **无公开余额/用量 API（仅控制台）**：`google`、`google-vertex`、`azure-openai-responses`、`together`、`groq`、
+  `cerebras`、`nvidia`、`huggingface`（whoami 无 credits）、`opencode`、`ant-ling`、`qwen-token-plan-cn`、
+  `xiaomi-token-plan-ams`、`minimax`、`minimax-cn`、`moonshotai`（国际站域名待实测）。
+
+- 未在映射中的路由 → 卡片明确提示"provider 无可用余额/用量来源"；
 - 未配置对应 key → 提示"未配置 {keyRef}"。
 - API key 只在 harness 进程内解析（credentials 服务），不会下发到浏览器。
 
-**自定义来源**：如果某个 provider 有自己的余额/用量 API，可在插件配置中声明
-`balance.providers`（持久安装版在 profile 的 `cordis.patch.yml` 条目里加 `config`）：
+**自定义来源**：可在插件配置中声明 `balance.providers`（持久安装版在 profile 的
+`cordis.patch.yml` 条目里加 `config`）：
 
 ```yaml
 - insert:
@@ -48,14 +68,16 @@ DeepSeek Harness（DSH）仪表盘 UI 插件。
         balance:
           providers:
             my-route:                    # provider 路由名
-              kind: usage                # money（金额）| usage（用量百分比）
+              kind: credits              # money | usage | credits
+              shape: openrouter          # deepseek | moonshot | opencode | openrouter（缺省按 kind 推断）
               keyRef: MY_API_KEY         # credentials 中的 key 引用
               baseUrl: https://api.example.com
-              path: /usage               # 默认：money → /user/balance，usage → /usage
+              path: /credits             # 默认：money → /user/balance，usage → /usage，credits → /credits
 ```
 
-- `kind: money` 期望返回 `is_available` + `balance_infos[{currency, total_balance, granted_balance, topped_up_balance}]`（DeepSeek 官方同构）；
-- `kind: usage` 期望返回 `usage.{rolling,weekly,monthly}.{status,percent,resetsAt}`（OpenCode Go 官方同构）。
+- `kind: money` 期望返回 `balance_infos[]`（DeepSeek 同构）或 Moonshot 式顶层 `available_balance` 等字段（shape: moonshot）；
+- `kind: usage` 期望返回 `usage.{rolling,weekly,monthly}.{status,percent,resetsAt}`（OpenCode Go 同构）；
+- `kind: credits` 期望返回 `total_credits`/`total_usage`（OpenRouter 同构，兼容 `credits`/`balance`/`usage` 等字段名）。
 
 ## 安装（给其他人）
 
