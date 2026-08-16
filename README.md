@@ -39,8 +39,11 @@ DeepSeek Harness（DSH）仪表盘 UI 插件。
 | `opencode-go` | usage | `GET https://opencode.ai/zen/go/v1/usage` |
 | `openrouter` | credits | `GET https://openrouter.ai/api/v1/credits`（[文档](https://openrouter.ai/docs/api/api-reference/credits/get-remaining-credits)） |
 | `moonshotai-cn` | money | `GET https://api.moonshot.cn/v1/users/me/balance`（[Kimi 余额文档](https://www.kimi.com/zh-cn/help/kimi-api/api-balance-and-usage)） |
-| `kimi-coding` | money | 同上（标准 API 余额；Coding 套餐剩余无公开 API） |
-| `xiaomi` | money | `GET https://api.mimogateway.com/v1/users/me/balance`（⚠️ 社区端点，需实测） |
+
+**有端点但需实测/自行配置**（未内置）：
+
+- `kimi-coding`：标准余额端点与 `moonshotai-cn` 相同（`api.moonshot.cn/v1/users/me/balance`，用 `KIMI_API_KEY`）；Coding 套餐剩余量无公开 API；
+- `xiaomi`：社区端点 `GET https://api.mimogateway.com/v1/users/me/balance`（官方未显式文档化，需实测后按 `balance.providers` 配置）。
 
 **未内置/不支持的 provider**（完整调研见 `docs/providers.md`）：
 
