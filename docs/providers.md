@@ -16,13 +16,13 @@
 | provider | 平台 | baseUrl（pi-ai） | key（pi-ai env） | 官方余额/用量端点 | 结论 |
 | --- | --- | --- | --- | --- | --- |
 | openai | OpenAI | https://api.openai.com/v1 | OPENAI_API_KEY | `GET /v1/organization/usage`（用量/花费，需 org admin key，见 [Usage API](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage)）；无公开 credits/balance 端点 | ⚠️ 部分 |
-| anthropic | Anthropic | https://api.anthropic.com | ANTHROPIC_API_KEY | `GET /v1/organizations/{org}/usage/cost`、`/usage/limits`（[Usage & Cost API](https://platform.claude.com/docs/en/manage-claude/usage-cost-api)，需 org admin key） | ⚠️ 部分（普通 key ❌） |
+| anthropic | Anthropic | https://api.anthropic.com | ANTHROPIC_API_KEY | 成本：`GET /v1/organizations/cost_report`；用量：`GET /v1/organizations/usage_report/messages`（[Usage & Cost API](https://platform.claude.com/docs/en/manage-claude/usage-cost-api)，需 Admin key `sk-ant-admin01-…`）；无余额端点 | ⚠️ 部分（普通 key ❌） |
 | google | Google Gemini | https://generativelanguage.googleapis.com/v1beta | GEMINI_API_KEY | 无公开余额/用量 API | ❌ |
 | google-vertex | Google Cloud Vertex | （ADC/服务账号） | GOOGLE_CLOUD 凭据 | Cloud Billing `projects.getBillingInfo` 仅返回 billingEnabled，无余额；用量需 BigQuery 计费导出 | ❌ |
 | amazon-bedrock | AWS Bedrock | （AWS 凭据链） | AWS 凭据 | AWS Cost Explorer `GetCostAndUsage` / Budgets `DescribeBudgets`（[文档](https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html)，需 IAM，延迟 ≤24h，无实时余额） | ⚠️ 部分（复杂） |
 | azure-openai-responses | Azure OpenAI | （Azure 端点） | AZURE_OPENAI_API_KEY | 无公开配额/余额读取 API；仅 Cost Management Query（[文档](https://learn.microsoft.com/en-us/rest/api/cost-management/query/usage)，需订阅权限） | ❌ |
 | mistral | Mistral | https://api.mistral.ai | MISTRAL_API_KEY | 组织级路由 `/v1/admin/usage`、`/v1/admin/spend-limit`（需 org 级 key，官方 SDK 未发布，未确认）；⚠️ 第三方教程宣称的 `dashboard.get_account_usage()`（remaining_quota 等）**已证伪**，勿用 | ⚠️ 部分（org admin，未确认） |
-| xai | xAI | https://api.x.ai/v1 | XAI_API_KEY | 官方预付费余额端点：`management-api.x.ai` `prepaid/balance`（需 **Management Key**，非普通 API key） | ⚠️ 部分（需 management key） |
+| xai | xAI | https://api.x.ai/v1 | XAI_API_KEY | 官方预付费余额：`GET https://management-api.x.ai/v1/billing/teams/{team_id}/prepaid/balance`（[Management API](https://docs.x.ai/developers/management-api-guide)，需 **Management Key**，余额为美分） | ⚠️ 部分（需 management key + team_id） |
 | openrouter | OpenRouter | https://openrouter.ai/api/v1 | OPENROUTER_API_KEY | `GET /api/v1/credits`（total_credits/total_usage，见 [Get remaining credits](https://openrouter.ai/docs/api/api-reference/credits/get-remaining-credits)） | ✅ 支持 |
 | together | Together AI | https://api.together.ai/v1 | TOGETHER_API_KEY | 无公开 REST 端点（仅 dashboard） | ❌ |
 | groq | Groq | https://api.groq.com/openai/v1 | GROQ_API_KEY | 无公开 billing/usage 端点 | ❌ |
