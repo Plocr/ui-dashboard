@@ -2,7 +2,7 @@
 
 DeepSeek Harness（DSH）仪表盘 UI 插件。
 
-以可视化方式展示当前会话的**上下文占用、Token 用量与费用估算、会话统计、目标、待办、后台任务与工作区信息**，支持两种展示形态：
+以可视化方式展示当前会话的**上下文占用、Token 用量与费用估算、DeepSeek 账户余额、会话统计、目标、待办、后台任务与工作区信息**，支持两种展示形态：
 
 - **右侧栏**：占据 shell 内置的 `details` 槽位（右侧第三栏，同官方 `ui-sidebar` 占据 `sidebar` 的方式），通过会话头部工具区的「仪表盘」按钮打开；
 - **会话标签页**：注册进 `conversation.view` 槽位（加法席位），与内置「对话」「轨迹」标签并列，点击「仪表盘」标签整页查看。
@@ -13,6 +13,7 @@ DeepSeek Harness（DSH）仪表盘 UI 插件。
 | --- | --- | --- |
 | 上下文 | 左：粗圆环（14px 描边，按系统提示/工具/消息三色分段，百分比内嵌环心）；右：组成列表 + 比例条 | `contextPressure` / `contextBreakdown` 投影 |
 | 用量 · 费用 · 统计（融合版块） | KPI 汇总格（轮次/步骤/总 Token/费用 ¥）→ 金额占比单条图 → 行内 `token · 金额` → 合计 → 统计徽章（模型/工具耗时、平均首字延迟、生成速度） | `tokenUsage` / `sessionStats` 投影 + Host 模型选择 |
+| 余额 | DeepSeek 账户余额：按币种总额 + 充值/赠送明细，带手动刷新按钮 | Host RPC `balance`（credentials 解析 `DEEPSEEK_API_KEY` → `api.deepseek.com/user/balance`，key 不离开 harness 进程） |
 | 目标 | 目标文（两行截断）+ 阶段 + 轮次进度条 | `goal` 投影 |
 | 待办 | 完成进度条 + 状态圆点列表 + 汇总 | `todos` 投影 |
 | 后台任务 | 状态计数徽章 + 任务列表 | `useSessions().jobsBySession` |

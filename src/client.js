@@ -49,6 +49,15 @@ return {
       'cost.total': '合计（估算）',
       'cost.note': '官方公开价估算，可能与实际账单不符',
       'cost.unknown': '未知',
+      'balance.title': '余额',
+      'balance.loading': '查询中…',
+      'balance.noKey': '未配置 DEEPSEEK_API_KEY（请到设置中填写）',
+      'balance.error': '余额查询失败',
+      'balance.refresh': '刷新余额',
+      'balance.unavailable': '账户不可用',
+      'balance.granted': '赠送',
+      'balance.toppedUp': '充值',
+      'balance.note': '来自 DeepSeek 账户余额 API',
       'stats.turns': '轮次',
       'stats.steps': '步骤',
       'stats.llm': '模型耗时',
@@ -104,6 +113,15 @@ return {
       'cost.total': 'Total (estimate)',
       'cost.note': 'est. at public list prices; may differ from actual billing',
       'cost.unknown': 'Unknown',
+      'balance.title': 'Balance',
+      'balance.loading': 'Loading…',
+      'balance.noKey': 'DEEPSEEK_API_KEY not configured (set it in Settings)',
+      'balance.error': 'Balance query failed',
+      'balance.refresh': 'Refresh balance',
+      'balance.unavailable': 'Account unavailable',
+      'balance.granted': 'Granted',
+      'balance.toppedUp': 'Topped up',
+      'balance.note': 'From the DeepSeek account balance API',
       'stats.turns': 'Turns',
       'stats.steps': 'Steps',
       'stats.llm': 'Model time',
@@ -169,7 +187,8 @@ return {
       'target': ['M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11', 'M8 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4'],
       'check': ['M2.5 4h6M2.5 8h6M2.5 12h3.5', 'M9.5 12l2 2 3.5-4'],
       'term': ['M2.5 4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z', 'M5.5 6l2 2-2 2', 'M9.5 10.5h3'],
-      'folder': ['M2 4.5a1 1 0 0 1 1-1h3l1.5 2H13a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z']
+      'folder': ['M2 4.5a1 1 0 0 1 1-1h3l1.5 2H13a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z'],
+      'refresh': ['M13.5 8a5.5 5.5 0 1 1-1.6-3.9', 'M11.9 1.5V5h3.5']
     }
     const svgIcon = (name, cls, size) => React.createElement(
       'svg', { viewBox: '0 0 16 16', width: size ?? 14, height: size ?? 14, 'aria-hidden': true, className: cls },
@@ -340,6 +359,67 @@ return {
       return React.createElement('section', { className: 'udash-card' }, kids)
     }
 
+    // 余额卡片：DeepSeek 账户余额（Host 经 /rpc balance 查询，API key 不离开 harness 进程）
+    const BALANCE_SYMBOL = { 'CNY': '¥', 'USD': '$', 'EUR': '€' }
+    function BalanceCard({ t }) {
+      const [state, setState] = React.useState({ status: 'loading', data: null, error: null })
+      const load = React.useCallback(() => {
+        setState((s) => ({ ...s, status: 'loading' }))
+        host.call('balance', {}).then((r) => {
+          if (r === null || typeof r !== 'object' || typeof r.status !== 'string') throw new Error('bad balance response')
+          setState({ status: r.status, data: r, error: null })
+        }).catch((e) => {
+          setState({ status: 'error', data: null, error: e instanceof Error ? e.message : String(e) })
+        })
+      }, [])
+      React.useEffect(() => { load() }, [load])
+      const money = (currency, value) => {
+        if (value === void 0 || value === null || value === '') return '—'
+        const sym = BALANCE_SYMBOL[currency] ?? (currency === void 0 ? '' : `${currency} `)
+        return sym + String(value)
+      }
+      const kids = [
+        React.createElement('div', { className: 'udash-cardHeadRow', key: 'head' }, [
+          cardHead('coin', t('balance.title')),
+          React.createElement('button', {
+            type: 'button', className: 'udash-refresh', key: 'refresh',
+            'aria-label': t('balance.refresh'), title: t('balance.refresh'), onClick: load
+          }, svgIcon('refresh', void 0, 13))
+        ])
+      ]
+      if (state.status === 'loading') {
+        kids.push(React.createElement('div', { className: 'udash-empty', key: 'body' }, t('balance.loading')))
+      } else if (state.status === 'no-key') {
+        kids.push(React.createElement('div', { className: 'udash-empty', key: 'body' }, t('balance.noKey')))
+      } else if (state.status === 'error') {
+        kids.push(React.createElement('div', { className: 'udash-empty', key: 'body' }, [
+          t('balance.error'),
+          state.error !== null && state.error !== '' ? React.createElement('div', { className: 'udash-balanceErr', key: 'msg' }, String(state.error)) : null
+        ]))
+      } else {
+        const infos = state.data !== null && Array.isArray(state.data.infos) ? state.data.infos : []
+        if (infos.length === 0) {
+          kids.push(React.createElement('div', { className: 'udash-empty', key: 'body' }, '—'))
+        } else {
+          kids.push(React.createElement('div', { className: 'udash-rows', key: 'rows' },
+            infos.map((i) => {
+              const chips = []
+              if (i.toppedUpBalance !== void 0 && i.toppedUpBalance !== null && i.toppedUpBalance !== '') chips.push(chip('top', `${t('balance.toppedUp')} ${money(i.currency, i.toppedUpBalance)}`))
+              if (i.grantedBalance !== void 0 && i.grantedBalance !== null && i.grantedBalance !== '') chips.push(chip('grant', `${t('balance.granted')} ${money(i.currency, i.grantedBalance)}`))
+              return React.createElement('div', { className: 'udash-balanceRow', key: i.currency ?? 'x' }, [
+                row(i.currency ?? 'x', i.currency ?? '—', money(i.currency, i.totalBalance), void 0, 'udash-rowStrong'),
+                chips.length > 0 ? React.createElement('div', { className: 'udash-chips', key: 'chips' }, chips) : null
+              ])
+            })))
+          if (state.data !== null && state.data.isAvailable === false) {
+            kids.push(React.createElement('span', { className: 'udash-chip2', key: 'avail' }, t('balance.unavailable')))
+          }
+        }
+        kids.push(React.createElement('div', { className: 'udash-empty', key: 'note' }, t('balance.note')))
+      }
+      return React.createElement('section', { className: 'udash-card' }, kids)
+    }
+
     // 目标卡片：目标 + 轮次进度条
     function GoalCard({ goal, t }) {
       if (goal === null || goal === void 0) return null
@@ -456,6 +536,7 @@ return {
         ]),
         React.createElement(ContextCard, { pressure, breakdown, t, key: 'context' }),
         React.createElement(MetricsCard, { usage, model, stats, t, key: 'metrics' }),
+        React.createElement(BalanceCard, { t, key: 'balance' }),
         React.createElement(GoalCard, { goal, t, key: 'goal' }),
         React.createElement(TodosCard, { todos, t, key: 'todos' }),
         React.createElement(JobsCard, { jobs, t, key: 'jobs' }),
@@ -521,6 +602,11 @@ return {
 .udash-close:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .udash-card{flex:none;display:flex;flex-direction:column;gap:10px;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;padding:12px}
 .udash-cardHead{display:flex;align-items:center;gap:6px}
+.udash-cardHeadRow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.udash-refresh{flex:none;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:none;border:none;border-radius:50%;padding:0}
+.udash-refresh:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.udash-balanceRow{display:flex;flex-direction:column;gap:4px}
+.udash-balanceErr{color:var(--dsw-alias-label-tertiary);font-size:12px;word-break:break-all}
 .udash-cardIcon{flex:none;color:var(--dsw-alias-label-tertiary)}
 .udash-cardTitle{color:var(--dsw-alias-label-secondary);font-size:13px;font-weight:500}
 .udash-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
