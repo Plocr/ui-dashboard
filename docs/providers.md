@@ -29,7 +29,7 @@
 | cerebras | Cerebras | https://api.cerebras.ai/v1 | CEREBRAS_API_KEY | 无公开 billing/usage 端点 | ❌ |
 | fireworks | Fireworks AI | https://api.fireworks.ai/inference | FIREWORKS_API_KEY | `GET /v1/accounts/{account_id}/billing/summary`（[Get billing summary](https://docs.fireworks.ai/api-reference/get-billing-summary)，**端点含 account_id**，非仅 key 直查） | ⚠️ 部分（需 account_id） |
 | nvidia | NVIDIA NIM | https://integrate.api.nvidia.com/v1 | NVIDIA_API_KEY | 无公开 credits/balance 端点（[官方论坛确认无法查 credits](https://forums.developer.nvidia.com/t/cannot-find-the-amount-of-credits-left-on-nim-api/337051)） | ❌ |
-| huggingface | Hugging Face | https://router.huggingface.co/v1 | HF_TOKEN | `GET https://huggingface.co/api/whoami-v2` 仅返回身份，无 credits 余额 | ⚠️ 部分（无余额） |
+| huggingface | Hugging Face | https://router.huggingface.co/v1 | HF_TOKEN | `GET https://huggingface.co/api/whoami-v2` 仅返回身份，无 credits 余额（[whoami 讨论](https://discuss.huggingface.co/t/how-do-you-use-the-whoami-endpoint/15830)、[定价与计费](https://huggingface.co/docs/inference-providers/main/en/pricing)） | ⚠️ 部分（无余额） |
 | github-copilot | GitHub Copilot | https://api.individual.githubcopilot.com | COPILOT_GITHUB_TOKEN | 用量端点仅企业/组织管理员：`GET /orgs/{org}/copilot/usage`、`/enterprises/{e}/copilot/usage`；个人订阅无余额 API | ⚠️ 部分（个人 ❌） |
 | vercel-ai-gateway | Vercel AI Gateway | https://ai-gateway.vercel.sh | AI_GATEWAY_API_KEY | `POST https://api.vercel.com/v1/ai-gateway/usages`（用量/花费，需 Vercel 访问令牌；无"余额"概念） | ⚠️ 部分 |
 | cloudflare-ai-gateway | Cloudflare AI Gateway | （Cloudflare 端点） | CF API Token | `GET /accounts/{id}/ai-gateway/billing/usage-history`（需 Bill 权限；用量/花费，无余额） | ⚠️ 部分 |
