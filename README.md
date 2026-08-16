@@ -13,7 +13,7 @@ DeepSeek Harness（DSH）仪表盘 UI 插件。
 | --- | --- | --- |
 | 上下文 | 左：粗圆环（14px 描边，按系统提示/工具/消息三色分段，百分比内嵌环心）；右：组成列表 + 比例条 | `contextPressure` / `contextBreakdown` 投影 |
 | 用量 · 费用 · 统计（融合版块） | KPI 汇总格（轮次/步骤/总 Token/费用 ¥）→ 金额占比单条图 → 行内 `token · 金额` → 合计 → 统计徽章（模型/工具耗时、平均首字延迟、生成速度） | `tokenUsage` / `sessionStats` 投影 + Host 模型选择 |
-| 余额 | DeepSeek 账户余额：按币种总额 + 充值/赠送明细，带手动刷新按钮；余额查询**跟随当前 provider**——订阅制/第三方路由明确提示"不可用" | Host RPC `balance`（按 provider 路由选 key 与端点；DeepSeek 官方为 `api.deepseek.com/user/balance`，见[官方文档](https://api-docs.deepseek.com/zh-cn/api/get-user-balance/)） |
+| 余额/用量 | 跟随当前 provider：DeepSeek 官方显示金额（币种总额 + 充值/赠送）；OpenCode Go 显示套餐用量（rolling/weekly/monthly 已用百分比 + 重置时间）；带手动刷新按钮 | Host RPC `balance`（按 provider 路由分发到官方 API：[DeepSeek](https://api-docs.deepseek.com/zh-cn/api/get-user-balance/) / [OpenCode Go](https://opencode.ai/zen/go/v1/usage)） |
 | 目标 | 目标文（两行截断）+ 阶段 + 轮次进度条 | `goal` 投影 |
 | 待办 | 完成进度条 + 状态圆点列表 + 汇总 | `todos` 投影 |
 | 后台任务 | 状态计数徽章 + 任务列表 | `useSessions().jobsBySession` |
@@ -22,22 +22,23 @@ DeepSeek Harness（DSH）仪表盘 UI 插件。
 费用估算：按 DeepSeek 官方人民币公开价（deepseek-chat：未缓存输入 ¥2 / 缓存命中 ¥0.5 / 输出 ¥8 每百万 tokens；deepseek-reasoner：¥4 / ¥1 / ¥16），
 基于 `tokenUsage` 投影分桶计算；当前模型由 Host 半边通过 RPC `current-model` 读取默认模型选择。仅为估算，可能与实际账单不符。
 
-### 余额：跟随 provider，订阅制/第三方不硬查
+### 余额/用量：跟随 provider，按各服务商官方 API 计算
 
-余额查询**跟随当前默认模型的 provider 路由**（`agentDefaultModel.currentSelection()`）：
+卡片**跟随当前默认模型的 provider 路由**（`agentDefaultModel.currentSelection()`），
+内置两种来源，各自按官方 API 计算：
 
-- `deepseek-official`（DSH 内置 DeepSeek 官方）→ 用 `DEEPSEEK_API_KEY` 查
-  `https://api.deepseek.com/user/balance`（[官方文档](https://api-docs.deepseek.com/zh-cn/api/get-user-balance/)），
-  展示按币种总额与充值/赠送明细；
-- **其他路由（订阅制、pi-ai/OpenAI 兼容网关、自定义代理等）→ 卡片明确提示
-  "provider 非 DeepSeek 官方，余额不可用"**，不会显示无关的 DeepSeek 余额；
+| provider 路由 | 形态 | 数据来源 |
+| --- | --- | --- |
+| `deepseek-official` | 金额：按币种总额 + 充值/赠送明细 | `GET https://api.deepseek.com/user/balance`（Bearer `DEEPSEEK_API_KEY`，[官方文档](https://api-docs.deepseek.com/zh-cn/api/get-user-balance/)） |
+| `opencode-go` | 用量：rolling（5 小时滚动）/ weekly / monthly 三个窗口的已用百分比 + 重置时间（进度条展示） | `GET https://opencode.ai/zen/go/v1/usage`（Bearer `OPENCODE_GO_API_KEY`） |
+
+- 未在映射中的路由（其他订阅制/第三方网关）→ 卡片明确提示"provider 非 DeepSeek 官方，
+  余额不可用"，不会硬查无关接口；
 - 未配置对应 key → 提示"未配置 {keyRef}"。
+- API key 只在 harness 进程内解析（credentials 服务），不会下发到浏览器。
 
-API key 只在 harness 进程内解析（credentials 服务），不会下发到浏览器。
-
-**自定义余额来源**：如果某个 provider 有自己的余额 API，可在插件配置中声明
-`balance.providers`（持久安装版在 profile 的 `cordis.patch.yml` 条目里加 `config`，
-例如把 `opencode-go` 路由也指向 DeepSeek 官方余额）：
+**自定义来源**：如果某个 provider 有自己的余额/用量 API，可在插件配置中声明
+`balance.providers`（持久安装版在 profile 的 `cordis.patch.yml` 条目里加 `config`）：
 
 ```yaml
 - insert:
@@ -46,13 +47,15 @@ API key 只在 harness 进程内解析（credentials 服务），不会下发到
       config:
         balance:
           providers:
-            opencode-go:            # 你的 provider 路由名
-              keyRef: DEEPSEEK_API_KEY
-              baseUrl: https://api.deepseek.com
+            my-route:                    # provider 路由名
+              kind: usage                # money（金额）| usage（用量百分比）
+              keyRef: MY_API_KEY         # credentials 中的 key 引用
+              baseUrl: https://api.example.com
+              path: /usage               # 默认：money → /user/balance，usage → /usage
 ```
 
-只要 `baseUrl` 提供同构的 `GET /user/balance`（Bearer key，返回
-`is_available` + `balance_infos`），即可接入任意平台。
+- `kind: money` 期望返回 `is_available` + `balance_infos[{currency, total_balance, granted_balance, topped_up_balance}]`（DeepSeek 官方同构）；
+- `kind: usage` 期望返回 `usage.{rolling,weekly,monthly}.{status,percent,resetsAt}`（OpenCode Go 官方同构）。
 
 ## 安装（给其他人）
 

@@ -3,22 +3,24 @@
  *
  * 提供 Package-private RPC：
  *  - `current-model`：读取当前默认模型选择（provider / model），供费用估算使用；
- *  - `balance`：查询当前 provider 的账户余额。DeepSeek 官方路由
- *    （api.deepseek.com/user/balance，见 https://api-docs.deepseek.com/zh-cn/api/get-user-balance）
- *    用 credentials 解析对应 API key（key 不离开 harness 进程）；订阅制或第三方
- *    路由无统一余额接口，返回 `unsupported` 由界面明确提示，不再显示无关余额。
+ *  - `balance`：查询当前 provider 的**余额/套餐用量**，按 provider 路由分发到对应
+ *    官方 API（key 只在 harness 进程内解析，不离开进程）：
+ *      · DeepSeek 官方 → GET {base}/user/balance（金额，见
+ *        https://api-docs.deepseek.com/zh-cn/api/get-user-balance）
+ *      · OpenCode Go   → GET {base}/usage（rolling/weekly/monthly 用量百分比 + 重置时间）
+ *    订阅制或未在映射中的第三方路由返回 `unsupported`，由界面明确提示。
  *
  * 用法：将本文件内容作为 cordis_define 的 code.host 传入（纯 JS 函数体）。
  */
 
-/** 内置余额来源映射：provider 路由 → { keyRef, baseUrl }。 */
+/** 内置 provider → 余额/用量来源。kind: 'money'（金额）| 'usage'（用量百分比）。 */
 const DEFAULT_BALANCE_SOURCES = {
-  'deepseek-official': { keyRef: 'DEEPSEEK_API_KEY', baseUrl: 'https://api.deepseek.com' }
+  'deepseek-official': { kind: 'money', keyRef: 'DEEPSEEK_API_KEY', baseUrl: 'https://api.deepseek.com', path: '/user/balance' },
+  'opencode-go': { kind: 'usage', keyRef: 'OPENCODE_GO_API_KEY', baseUrl: 'https://opencode.ai/zen/go/v1', path: '/usage' }
 }
 
-/** 查询当前 provider 的账户余额；无对应来源时返回 unsupported。 */
+/** 查询当前 provider 的余额/用量；无对应来源时返回 unsupported。 */
 async function queryBalance(ctx, config) {
-  // 当前默认 provider（供余额来源选择与界面提示）
   let provider = null
   const svc = ctx.get('agentDefaultModel')
   if (svc !== undefined) {
@@ -47,16 +49,45 @@ async function queryBalance(ctx, config) {
   if (!key) return { status: 'no-key', keyRef }
 
   const baseUrl = (source.baseUrl ?? 'https://api.deepseek.com').replace(/\/+$/, '')
+  const path = source.path ?? (source.kind === 'usage' ? '/usage' : '/user/balance')
   try {
-    const res = await fetch(`${baseUrl}/user/balance`, {
+    const res = await fetch(`${baseUrl}${path}`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' },
       signal: AbortSignal.timeout(10_000)
     })
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) return { status: 'error', message: data?.error?.message ?? `HTTP ${res.status}` }
+    if (!res.ok) return { status: 'error', message: data?.error?.message ?? data?.message ?? `HTTP ${res.status}` }
+
+    if (source.kind === 'usage') {
+      // OpenCode Go 用量：usage.{rolling,weekly,monthly}.{status,percent,resetsAt}
+      const usage = data?.usage ?? data
+      const pick = (name) => {
+        const w = usage?.[name]
+        if (w === null || w === undefined) return undefined
+        return {
+          status: w?.status ?? 'ok',
+          percent: typeof w?.percent === 'number' ? w.percent : undefined,
+          resetsAt: typeof w?.resetsAt === 'string' ? w.resetsAt : undefined
+        }
+      }
+      return {
+        status: 'ok',
+        kind: 'usage',
+        provider,
+        windows: {
+          rolling: pick('rolling'),
+          weekly: pick('weekly'),
+          monthly: pick('monthly')
+        },
+        fetchedAt: Date.now()
+      }
+    }
+
+    // DeepSeek 官方余额：is_available + balance_infos
     return {
       status: 'ok',
+      kind: 'money',
       provider,
       isAvailable: data?.is_available !== false,
       infos: Array.isArray(data?.balance_infos)
